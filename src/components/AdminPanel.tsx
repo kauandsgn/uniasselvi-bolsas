@@ -157,8 +157,8 @@ export default function AdminPanel() {
     });
 
     const csvContent = "data:text/csv;charset=utf-8,\uFEFF" 
-      + header.join(",") + "\n" 
-      + rows.map(e => e.join(",")).join("\n");
+      + header.join(";") + "\n" 
+      + rows.map(e => e.join(";")).join("\n");
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
