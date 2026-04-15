@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 interface Lead {
@@ -15,7 +15,9 @@ interface Lead {
 }
 
 export default function AdminPanel() {
+  const [loginUsuario, setLoginUsuario] = useState<string>('');
   const [senha, setSenha] = useState<string>('');
+  const [lembrar, setLembrar] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -29,6 +31,12 @@ export default function AdminPanel() {
     setLoading(true);
     setError('');
 
+    if (loginUsuario.trim().toLowerCase() !== 'comercial') {
+      setError('Usuário não encontrado ou incorreto.');
+      setLoading(false);
+      return;
+    }
+
     const { data, error: rpcError } = await supabase.rpc('get_admin_leads', {
       p_senha: senha,
     });
@@ -41,9 +49,28 @@ export default function AdminPanel() {
       return;
     }
 
+    if (lembrar) {
+      localStorage.setItem('uniasselvi_admin_token', JSON.stringify({ u: loginUsuario, p: senha }));
+    }
+
     setLeads(data);
     setIsAuthenticated(true);
   };
+
+  // Auto-login se lembrou a senha
+  useEffect(() => {
+    const token = localStorage.getItem('uniasselvi_admin_token');
+    if (token) {
+      try {
+        const { u, p } = JSON.parse(token);
+        if (u && p) {
+          setLoginUsuario(u);
+          setSenha(p);
+          setLembrar(true);
+        }
+      } catch (e) {}
+    }
+  }, []);
 
   const reloadData = async () => {
     setLoading(true);
@@ -155,21 +182,46 @@ export default function AdminPanel() {
           <p className="text-sm text-gray-500 mb-6">Painel exclusivo para equipe do pólo.</p>
 
           <form onSubmit={handleLogin} className="space-y-4">
-            <input
-              type="password"
-              placeholder="Digite a senha administrativa"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary outline-none transition-colors text-center font-bold tracking-widest"
-              autoFocus
-            />
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            <div>
+              <input
+                type="text"
+                placeholder="Login de Acesso"
+                value={loginUsuario}
+                onChange={(e) => setLoginUsuario(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary outline-none transition-colors font-bold text-center"
+              />
+            </div>
+            <div>
+              <input
+                type="password"
+                placeholder="Senha administrativa"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-primary outline-none transition-colors font-bold tracking-widest text-center"
+              />
+            </div>
+            
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <input 
+                type="checkbox" 
+                id="lembrar" 
+                checked={lembrar} 
+                onChange={(e) => setLembrar(e.target.checked)} 
+                className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary focus:ring-2 cursor-pointer"
+              />
+              <label htmlFor="lembrar" className="text-sm text-gray-500 cursor-pointer select-none">
+                Salvar meu acesso (Lembrar login)
+              </label>
+            </div>
+
+            {error && <p className="text-red-500 text-sm font-semibold">{error}</p>}
+            
             <button
               type="submit"
-              disabled={loading || !senha}
-              className="w-full bg-primary text-secondary font-extrabold py-3 rounded-xl hover:bg-yellow-500 transition-colors disabled:opacity-50"
+              disabled={loading || !senha || !loginUsuario}
+              className="w-full bg-primary text-secondary font-extrabold py-3 rounded-xl hover:bg-yellow-500 transition-colors disabled:opacity-50 mt-2"
             >
-              {loading ? 'Verificando...' : 'Entrar no Painel'}
+              {loading ? 'Verificando...' : 'Fazer Login e Salvar'}
             </button>
           </form>
         </div>
